@@ -10,18 +10,6 @@
  */
 class dbDbModel extends dbDbModel_Parent
 {
-
-    protected $apc_enabled;
-
-    public function __construct()
-    {
-        // checks if APC is available
-        $this->apc_enabled = false;
-        if (Clementine::$config['module_db']['use_apc'] && ini_get('apc.enabled')) {
-            $this->apc_enabled = true;
-        }
-    }
-
     /**
      * connect : connects to the database, using the right encoding
      * 
@@ -223,7 +211,7 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function num_rows($stmt)
     {
-        return mysqli_num_rows($stmt);
+        return mysqli_num_rows(Clementine::$register['clementine_db']['connection'], $stmt);
     }
 
     /**
@@ -265,23 +253,13 @@ class dbDbModel extends dbDbModel_Parent
     public function list_fields($table)
     {
         if (!isset(Clementine::$register['clementine_db']['table_fields'][$table])) {
-            $database = Clementine::$config['clementine_db']['name'];
-            $fromcache = null;
-            if ($this->apc_enabled) {
-                $result = apc_fetch('clementine_db-list_fields.' . $database . '-' . $table, $fromcache);
-            }
-            if (!$fromcache) {
-                $sql = "SHOW FULL COLUMNS FROM `" . $this->escape_string($table) . "` ";
-                $result = array();
-                $res = $this->query($sql);
-                if ($res === false) {
-                    return false;
-                } else {
-                    for (; $res && $row = $this->fetch_assoc($res); $result[] = $row) {
-                    }
-                }
-                if ($this->apc_enabled) {
-                    apc_store('clementine_db-list_fields.' . $database . '-' . $table, $result);
+            $sql = "SHOW FULL COLUMNS FROM `" . $this->escape_string($table) . "` ";
+            $result = array();
+            $res = $this->query($sql);
+            if ($res === false) {
+                return false;
+            } else {
+                for (; $res && $row = $this->fetch_assoc($res); $result[] = $row) {
                 }
             }
             Clementine::$register['clementine_db']['table_fields'][$table] = $result;
@@ -307,36 +285,27 @@ class dbDbModel extends dbDbModel_Parent
             }
         }
         if (!isset(Clementine::$register['clementine_db']['foreign_keys'][$table])) {
-            $fromcache = null;
-            if ($this->apc_enabled) {
-                $result = apc_fetch('clementine_db-foreign_keys.' . $database . '-' . $table, $fromcache);
+            // version réécrite : plus rapide que d'aller chercher dans la base information_schema (lent selon versions de mysql)
+            $result = array();
+            $sql = "SHOW CREATE TABLE " . $this->escape_string($table);
+            $res = $this->query($sql);
+            if ($res === false) {
+                return false;
             }
-            if (!$fromcache) {
-                // version réécrite : plus rapide que d'aller chercher dans la base information_schema (lent selon versions de mysql)
-                $result = array();
-                $sql = "SHOW CREATE TABLE " . $this->escape_string($table);
-                $res = $this->query($sql);
-                if ($res === false) {
-                    return false;
-                }
-                $row = $this->fetch_assoc($res);
-                $matches = array();
-                if (preg_match_all('/FOREIGN KEY \(([^\)]*)\) REFERENCES ([^ ]*) ?\(([^\)]*)\) /S', $row['Create Table'], $matches)) {
-                    $fk_src_fields = $matches[1];
-                    $fk_dst_tables = $matches[2];
-                    $fk_dst_fields = $matches[3];
-                    $nb_keys = count($fk_src_fields);
-                    if ($nb_keys) {
-                        $fk = array();
-                        for ($i = 0; $i < $nb_keys; ++$i) {
-                            $fk['foreign_key'] = $table . '.' . str_replace('`', '', $fk_src_fields[$i]);
-                            $fk['references'] = str_replace('`', '', $fk_dst_tables[$i]) . '.' . str_replace('`', '', $fk_dst_fields[$i]);
-                            $result[] = $fk;
-                        }
+            $row = $this->fetch_assoc($res);
+            $matches = array();
+            if (preg_match_all('/FOREIGN KEY \(([^\)]*)\) REFERENCES ([^ ]*) ?\(([^\)]*)\) /S', $row['Create Table'], $matches)) {
+                $fk_src_fields = $matches[1];
+                $fk_dst_tables = $matches[2];
+                $fk_dst_fields = $matches[3];
+                $nb_keys = count($fk_src_fields);
+                if ($nb_keys) {
+                    $fk = array();
+                    for ($i = 0; $i < $nb_keys; ++$i) {
+                        $fk['foreign_key'] = $table . '.' . str_replace('`', '', $fk_src_fields[$i]);
+                        $fk['references'] = str_replace('`', '', $fk_dst_tables[$i]) . '.' . str_replace('`', '', $fk_dst_fields[$i]);
+                        $result[] = $fk;
                     }
-                }
-                if ($this->apc_enabled) {
-                    apc_store('clementine_db-foreign_keys.' . $database . '-' . $table, $result);
                 }
             }
             Clementine::$register['clementine_db']['foreign_keys'][$table] = $result;
@@ -352,26 +321,16 @@ class dbDbModel extends dbDbModel_Parent
      * @access public
      * @return void
      */
-    public function distinct_values($table, $field, $label_field = null)
+    public function distinct_values($table, $field)
     {
-        $sql = '
-            SELECT DISTINCT(`' . $this->escape_string($field) . '`)
-        ';
-        if ($label_field) {
-            $sql .= ', ' . $label_field . ' AS `' . $label_field . '`';
-        } else {
-            // pour le fetch
-            $label_field = $field;
-        }
-        $sql .= '
-                  FROM `' . $this->escape_string($table) . '` 
-        ';
+        $sql = 'SELECT DISTINCT(`' . $this->escape_string($field) . '`)
+                  FROM `' . $this->escape_string($table) . '` ';
         $result = array();
         $res = $this->query($sql);
         if ($res === false) {
             return false;
         } else {
-            for (; $res && $row = $this->fetch_assoc($res); $result[$row[$field]] = $row[$label_field]) {
+            for (; $res && $row = $this->fetch_assoc($res); $result[$row[$field]] = $row[$field]) {
             }
         }
         return $result;
