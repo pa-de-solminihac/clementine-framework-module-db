@@ -352,26 +352,16 @@ class dbDbModel extends dbDbModel_Parent
      * @access public
      * @return void
      */
-    public function distinct_values($table, $field, $label_field = null)
+    public function distinct_values($table, $field)
     {
-        $sql = '
-            SELECT DISTINCT(`' . $this->escape_string($field) . '`)
-        ';
-        if ($label_field) {
-            $sql .= ', ' . $label_field . ' AS `' . $label_field . '`';
-        } else {
-            // pour le fetch
-            $label_field = $field;
-        }
-        $sql .= '
-                  FROM `' . $this->escape_string($table) . '` 
-        ';
+        $sql = 'SELECT DISTINCT(`' . $this->escape_string($field) . '`)
+                  FROM `' . $this->escape_string($table) . '` ';
         $result = array();
         $res = $this->query($sql);
         if ($res === false) {
             return false;
         } else {
-            for (; $res && $row = $this->fetch_assoc($res); $result[$row[$field]] = $row[$label_field]) {
+            for (; $res && $row = $this->fetch_assoc($res); $result[$row[$field]] = $row[$field]) {
             }
         }
         return $result;
