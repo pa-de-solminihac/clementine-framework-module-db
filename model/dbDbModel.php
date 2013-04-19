@@ -47,15 +47,16 @@ class dbDbModel extends dbDbModel_Parent
             // connexion et selection de la BD
             $dbconf = Clementine::$config['clementine_db'];
             Clementine::$register['clementine_db']['connection'] = mysqli_init();
-            $is_connected = mysqli_real_connect(Clementine::$register['clementine_db']['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass']);
+            $is_connected = @mysqli_real_connect(Clementine::$register['clementine_db']['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass']);
             if (!$is_connected) {
-                echo 'La connexion à la base de données à échoué.';
-                if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
-                    $backtrace = debug_backtrace();
-                    $err_msg = Clementine::$register['clementine_db']['connection']->connect_error;
-                    echo "<br />\n" . '<strong>Clementine fatal error</strong>: ' . htmlentities($err_msg, ENT_COMPAT, mb_internal_encoding()) . ' in <strong>' . $backtrace[1]['file'] . '</strong> on line <strong>' . $backtrace[1]['line'] . '</strong>' . "<br />\n" . '<br />';
+                if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
+                    $errmsg = 'La connexion à la base de données à échoué.';
+                    $errmore = '';
+                    if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
+                        $errmore = Clementine::$register['clementine_db']['connection']->connect_error;
+                    }
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array($errmsg, $errmore), E_USER_ERROR, 0);
                 }
-                die();
             } else {
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
                     Clementine::$clementine_debug['sql'] = array();
@@ -84,7 +85,7 @@ class dbDbModel extends dbDbModel_Parent
             if ($nonfatal) {
                 $this->tag('<span style="background: #F80">nonfatal</span>');
             }
-            $backtrace = debug_backtrace();
+            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             $nb = array_push(Clementine::$clementine_debug['sql'], array('file'  => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
                                                                          'query' => implode('', Clementine::$register['clementine_db']['tag']) . htmlentities($sql, ENT_COMPAT, mb_internal_encoding())));
             $deb = microtime(true);
@@ -101,12 +102,15 @@ class dbDbModel extends dbDbModel_Parent
                 if (substr($err_msg, - (strlen('at line 1'))) == 'at line 1') {
                     $err_msg = substr($this->error(), 0, - (strlen(' at line 1')));
                 }
-                echo "<br />\n" . '<strong>Clementine fatal error</strong>: ' . htmlentities($err_msg, ENT_COMPAT, mb_internal_encoding()) . ' in <strong>' . $backtrace[0]['file'] . '</strong> on line <strong>' . $backtrace[0]['line'] . '</strong>' . "<br />\n" . '<br />';
-                echo 'Query : ';
-                echo '<pre>';
-                echo htmlentities($sql, ENT_COMPAT, mb_internal_encoding());
-                echo '</pre>';
-                die();
+                // erreur fatale en affichant le detail de la requete
+                $errmsg = htmlentities($err_msg, ENT_COMPAT, mb_internal_encoding());
+                $errmore = 'Query : ';
+                $errmore .= '<pre>';
+                $errmore .= htmlentities($sql, ENT_COMPAT, mb_internal_encoding());
+                $errmore .= '</pre>';
+                if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array($errmsg, $errmore), E_USER_ERROR, 1);
+                }
             }
             if ($nonfatal) {
                 $this->untag();
@@ -314,26 +318,23 @@ class dbDbModel extends dbDbModel_Parent
             if (!$fromcache) {
                 // version réécrite : plus rapide que d'aller chercher dans la base information_schema (lent selon versions de mysql)
                 $result = array();
-                $sql = "SHOW CREATE TABLE " . $this->escape_string($table);
+                $sql = "
+                    SELECT *
+                      FROM information_schema.KEY_COLUMN_USAGE
+                     WHERE constraint_schema = '" . $database . "' AND table_name = '" . $table . "'
+                       AND referenced_table_name IS NOT NULL;
+                ";
+                
                 $res = $this->query($sql);
                 if ($res === false) {
                     return false;
                 }
-                $row = $this->fetch_assoc($res);
-                $matches = array();
-                if (preg_match_all('/FOREIGN KEY \(([^\)]*)\) REFERENCES ([^ ]*) ?\(([^\)]*)\) /S', $row['Create Table'], $matches)) {
-                    $fk_src_fields = $matches[1];
-                    $fk_dst_tables = $matches[2];
-                    $fk_dst_fields = $matches[3];
-                    $nb_keys = count($fk_src_fields);
-                    if ($nb_keys) {
-                        $fk = array();
-                        for ($i = 0; $i < $nb_keys; ++$i) {
-                            $fk['foreign_key'] = $table . '.' . str_replace('`', '', $fk_src_fields[$i]);
-                            $fk['references'] = str_replace('`', '', $fk_dst_tables[$i]) . '.' . str_replace('`', '', $fk_dst_fields[$i]);
-                            $result[] = $fk;
-                        }
-                    }
+                for (; $row = $this->fetch_assoc($res); ) {
+                    $fk = array();
+                    $fk['foreign_key'] = $row['TABLE_NAME'] . '.' . $row['COLUMN_NAME'];
+                    $fk['references'] = $row['REFERENCED_TABLE_NAME'] . '.' . $row['REFERENCED_COLUMN_NAME'];
+                    $fk['constraint_name'] = $row['CONSTRAINT_NAME'];
+                    $result[] = $fk;
                 }
                 if ($this->apc_enabled) {
                     apc_store('clementine_db-foreign_keys.' . $database . '-' . $table, $result);
