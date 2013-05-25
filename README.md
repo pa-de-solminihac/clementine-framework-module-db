@@ -1,13 +1,16 @@
-clementine-framework-module-db
-==============================
+Module DB
+=========
 
 Module pour faciliter l'abstraction de base de données.
 
-Il fournit principalement des wrappers pour les fonctions mysqli_* ainsi que quelques fonctions utilitaires :
-- foreign_keys
-- distinct_values
-- enum_values
-- tag / untag
+Il fournit principalement des wrappers :
+- fonctions mysqli_* 
+
+Il fournit aussi quelques fonctions utilitaires :
+- foreign_keys : renvoie les clés étrangères d'une table
+- distinct_values : renvoie toutes les valeurs distinctes d'un champ
+- enum_values : renvoie les valeurs possibles d'un champ enum
+- tag / untag : tag / untag toutes les prochaines requetes qui seront exécutées (pour faciliter le debug)
 
 Configuration
 -------------
