@@ -16,6 +16,6 @@ Configuration
 -------------
 ```ini
 [module_db]
-log_queries=0 ; log les requetes avec la fonction error_log
+log_queries=0 ; log les requêtes avec la fonction error_log
 use_apc=1     ; utiliser le cache APC
 ```
