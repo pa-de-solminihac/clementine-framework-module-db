@@ -1,4 +1,4 @@
-Module DB
+Clementine Framework : module DB
 =========
 
 Module pour faciliter l'abstraction de base de données.
