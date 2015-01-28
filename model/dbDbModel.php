@@ -47,7 +47,11 @@ class dbDbModel extends dbDbModel_Parent
             // connexion et selection de la BD
             $dbconf = Clementine::$config['clementine_db'];
             Clementine::$register['clementine_db']['connection'] = mysqli_init();
-            $is_connected = @mysqli_real_connect(Clementine::$register['clementine_db']['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass']);
+            $db_port = null;
+            if (!empty($dbconf['port'])) {
+                $db_port = $dbconf['port'];
+            }
+            $is_connected = @mysqli_real_connect(Clementine::$register['clementine_db']['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass'], $dbconf['name'], $db_port);
             if (!$is_connected) {
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
                     $errmsg = 'La connexion à la base de données à échoué.';
@@ -62,8 +66,6 @@ class dbDbModel extends dbDbModel_Parent
                     Clementine::$clementine_debug['sql'] = array();
                 }
             }
-            $this->query('USE `' . $dbconf['name'] . '`');
-            mysqli_select_db(Clementine::$register['clementine_db']['connection'], '`' . $dbconf['name'] . '`');
             $this->query('SET NAMES ' . __SQL_ENCODING__);
             $this->query('SET CHARACTER SET ' . __SQL_ENCODING__);
         }
@@ -87,7 +89,7 @@ class dbDbModel extends dbDbModel_Parent
             }
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             $nb = array_push(Clementine::$clementine_debug['sql'], array('file'  => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
-                                                                         'query' => implode('', Clementine::$register['clementine_db']['tag']) . htmlentities($sql, ENT_COMPAT, mb_internal_encoding())));
+                                                                         'query' => implode('', Clementine::$register['clementine_db']['tag']) . Clementine::dump($sql, true)));
             $deb = microtime(true);
             // log query to error_log, with it's tags if any
             if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
@@ -103,13 +105,10 @@ class dbDbModel extends dbDbModel_Parent
                     $err_msg = substr($this->error(), 0, - (strlen(' at line 1')));
                 }
                 // erreur fatale en affichant le detail de la requete
-                $errmsg = htmlentities($err_msg, ENT_COMPAT, mb_internal_encoding());
                 $errmore = 'Query : ';
-                $errmore .= '<pre>';
-                $errmore .= htmlentities($sql, ENT_COMPAT, mb_internal_encoding());
-                $errmore .= '</pre>';
+                $errmore .= PHP_EOL . Clementine::dump(preg_replace('/^[\r\n]*|[ 	\r\n]*$/', '', $sql), true);
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
-                    Clementine::$register['clementine_debug_helper']->trigger_error(array($errmsg, $errmore), E_USER_ERROR, 1);
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array($err_msg, $errmore => 'html'), E_USER_ERROR, 1);
                 }
             }
             if ($nonfatal) {
