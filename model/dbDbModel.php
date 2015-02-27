@@ -1,12 +1,12 @@
 <?php
 /**
  * dbDbModel : database abstraction layer
- * 
- * @package 
+ *
+ * @package
  * @version $id$
- * @copyright 
- * @author Pierre-Alexis <pa@quai13.com> 
- * @license 
+ * @copyright
+ * @author Pierre-Alexis <pa@quai13.com>
+ * @license
  */
 class dbDbModel extends dbDbModel_Parent
 {
@@ -24,7 +24,7 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * connect : connects to the database, using the right encoding
-     * 
+     *
      * @access public
      * @return void
      */
@@ -59,7 +59,10 @@ class dbDbModel extends dbDbModel_Parent
                     if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
                         $errmore = Clementine::$register['clementine_db']['connection']->connect_error;
                     }
-                    Clementine::$register['clementine_debug_helper']->trigger_error(array($errmsg, $errmore), E_USER_ERROR, 0);
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array(
+                        $errmsg,
+                        $errmore
+                    ), E_USER_ERROR, 0);
                 }
             } else {
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
@@ -73,8 +76,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * query : passe les requetes a la BD en initiant la connexion si necessaire, et log pour debug des requetes
-     * 
-     * @param mixed $sql 
+     *
+     * @param mixed $sql
      * @param mixed $nonfatal : do not die even if query is bad
      * @access public
      * @return void
@@ -88,8 +91,10 @@ class dbDbModel extends dbDbModel_Parent
                 $this->tag('<span style="background: #F80">nonfatal</span>');
             }
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-            $nb = array_push(Clementine::$clementine_debug['sql'], array('file'  => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
-                                                                         'query' => implode('', Clementine::$register['clementine_db']['tag']) . Clementine::dump($sql, true)));
+            $nb = array_push(Clementine::$clementine_debug['sql'], array(
+                'file' => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
+                'query' => implode('', Clementine::$register['clementine_db']['tag']) . Clementine::dump(trim($sql) , true)
+            ));
             $deb = microtime(true);
             // log query to error_log, with it's tags if any
             if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
@@ -101,14 +106,17 @@ class dbDbModel extends dbDbModel_Parent
             Clementine::$clementine_debug['sql'][$nb - 1]['duree'] = $duree;
             if ($res === false && $nonfatal == false) {
                 $err_msg = $this->error();
-                if (substr($err_msg, - (strlen('at line 1'))) == 'at line 1') {
-                    $err_msg = substr($this->error(), 0, - (strlen(' at line 1')));
+                if (substr($err_msg, -(strlen('at line 1'))) == 'at line 1') {
+                    $err_msg = substr($this->error(), 0, -(strlen(' at line 1')));
                 }
                 // erreur fatale en affichant le detail de la requete
                 $errmore = 'Query : ';
-                $errmore .= PHP_EOL . Clementine::dump(preg_replace('/^[\r\n]*|[ 	\r\n]*$/', '', $sql), true);
+                $errmore.= PHP_EOL . Clementine::dump(preg_replace('/^[\r\n]*|[ 	\r\n]*$/', '', $sql), true);
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
-                    Clementine::$register['clementine_debug_helper']->trigger_error(array($err_msg, $errmore => 'html'), E_USER_ERROR, 1);
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array(
+                        $err_msg,
+                        $errmore => 'html'
+                    ) , E_USER_ERROR, 1);
                 }
             }
             if ($nonfatal) {
@@ -129,8 +137,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * tag : add a debug tag to next queries
-     * 
-     * @param mixed $tag 
+     *
+     * @param mixed $tag
      * @access public
      * @return void
      */
@@ -141,7 +149,7 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * untag : pop last debug tag
-     * 
+     *
      * @access public
      * @return void
      */
@@ -152,8 +160,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * escape_string : wrapper pour mysqli_real_escape_string qui s'assure que la connexion est deja faite
-     * 
-     * @param mixed $str 
+     *
+     * @param mixed $str
      * @access public
      * @return void
      */
@@ -166,8 +174,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * error : wrapper pour mysqli_error
-     * 
-     * @param mixed $str 
+     *
+     * @param mixed $str
      * @access public
      * @return void
      */
@@ -178,9 +186,9 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * fetch_array : wrapper for mysqli_fetch_array
-     * 
-     * @param mixed $stmt 
-     * @param mixed $type 
+     *
+     * @param mixed $stmt
+     * @param mixed $type
      * @access public
      * @return void
      */
@@ -191,8 +199,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * fetch_assoc : wrapper for mysqli_fetch_assoc
-     * 
-     * @param mixed $stmt 
+     *
+     * @param mixed $stmt
      * @access public
      * @return void
      */
@@ -203,8 +211,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * affected_rows : wrapper for mysqli_affected_rows
-     * 
-     * @param mixed $stmt 
+     *
+     * @param mixed $stmt
      * @access public
      * @return void
      */
@@ -219,8 +227,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * num_rows : wrapper for mysqli_num_rows
-     * 
-     * @param mixed $stmt 
+     *
+     * @param mixed $stmt
      * @access public
      * @return void
      */
@@ -231,7 +239,7 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * insert_id : wrapper for mysqli_insert_id
-     * 
+     *
      * @access public
      * @return void
      */
@@ -242,7 +250,7 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * found_rows : renvoie le resultat de SELECT FOUND_ROWS()
-     * 
+     *
      * @access public
      * @return void
      */
@@ -260,8 +268,8 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * list_fields : wrapper for mysqli_list_fields
-     * 
-     * @param mixed $table 
+     *
+     * @param mixed $table
      * @access public
      * @return void
      */
@@ -294,9 +302,9 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * foreign_keys : returns foreign keys for $table
-     * 
-     * @param mixed $table 
-     * @param mixed $database 
+     *
+     * @param mixed $table
+     * @param mixed $database
      * @access public
      * @return void
      */
@@ -323,12 +331,11 @@ class dbDbModel extends dbDbModel_Parent
                      WHERE constraint_schema = '" . $database . "' AND table_name = '" . $table . "'
                        AND referenced_table_name IS NOT NULL;
                 ";
-                
                 $res = $this->query($sql);
                 if ($res === false) {
                     return false;
                 }
-                for (; $row = $this->fetch_assoc($res); ) {
+                for (; $row = $this->fetch_assoc($res);) {
                     $fk = array();
                     $fk['foreign_key'] = $row['TABLE_NAME'] . '.' . $row['COLUMN_NAME'];
                     $fk['references'] = $row['REFERENCED_TABLE_NAME'] . '.' . $row['REFERENCED_COLUMN_NAME'];
@@ -346,9 +353,9 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * distinct_values : returns an array with the distinct values of a table field
-     * 
-     * @param mixed $table 
-     * @param mixed $field 
+     *
+     * @param mixed $table
+     * @param mixed $field
      * @access public
      * @return void
      */
@@ -358,12 +365,12 @@ class dbDbModel extends dbDbModel_Parent
             SELECT DISTINCT(`' . $this->escape_string($field) . '`)
         ';
         if ($label_field) {
-            $sql .= ', ' . $label_field . ' AS `' . $label_field . '`';
+            $sql.= ', ' . $label_field . ' AS `' . $label_field . '`';
         } else {
             // pour le fetch
             $label_field = $field;
         }
-        $sql .= '
+        $sql.= '
                   FROM `' . $this->escape_string($table) . '` 
         ';
         $result = array();
@@ -379,9 +386,9 @@ class dbDbModel extends dbDbModel_Parent
 
     /**
      * enum_values : returns an array with the available values of an enum/set field
-     * 
-     * @param mixed $table 
-     * @param mixed $field 
+     *
+     * @param mixed $table
+     * @param mixed $field
      * @access public
      * @return void
      */
