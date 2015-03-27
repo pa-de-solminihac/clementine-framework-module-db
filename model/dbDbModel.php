@@ -44,6 +44,9 @@ class dbDbModel extends dbDbModel_Parent
             if (!(isset(Clementine::$register['clementine_db']['tag']) && is_array(Clementine::$register['clementine_db']['tag']))) {
                 Clementine::$register['clementine_db']['tag'] = array();
             }
+            if (!(isset(Clementine::$register['clementine_db']['untag']) && is_array(Clementine::$register['clementine_db']['untag']))) {
+                Clementine::$register['clementine_db']['untag'] = array();
+            }
             // connexion et selection de la BD
             $dbconf = Clementine::$config['clementine_db'];
             Clementine::$register['clementine_db']['connection'] = mysqli_init();
@@ -91,14 +94,16 @@ class dbDbModel extends dbDbModel_Parent
                 $this->tag('<span style="background: #F80">nonfatal</span>');
             }
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            $tags = implode('', Clementine::$register['clementine_db']['tag']);
+            $untags = implode('', array_reverse(Clementine::$register['clementine_db']['untag']));
             $nb = array_push(Clementine::$clementine_debug['sql'], array(
                 'file' => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
-                'query' => implode('', Clementine::$register['clementine_db']['tag']) . Clementine::dump(trim($sql) , true)
+                'query' => $tags . Clementine::dump(trim($sql) , true) . $untags
             ));
             $deb = microtime(true);
             // log query to error_log, with it's tags if any
             if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
-                error_log(implode('', Clementine::$register['clementine_db']['tag']) . $sql);
+                error_log($tags . $sql . $untags);
             }
             $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
             $fin = microtime(true);
@@ -125,7 +130,7 @@ class dbDbModel extends dbDbModel_Parent
         } else {
             // log query to error_log, with it's tags if any
             if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
-                error_log(implode('', Clementine::$register['clementine_db']['tag']) . $sql);
+                error_log($tags . $sql . $untags);
             }
             $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
             if ($res === false && $nonfatal == false) {
@@ -142,9 +147,41 @@ class dbDbModel extends dbDbModel_Parent
      * @access public
      * @return void
      */
-    public function tag($tag)
+    public function tag($opening_tag, $closing_tag = '')
     {
-        Clementine::$register['clementine_db']['tag'][] = $tag;
+        $tags = array(
+            'opening_tag' => $opening_tag,
+            'closing_tag' => $closing_tag
+        );
+        $nocolor = "\e[0m";
+        $color = '';
+        switch ($opening_tag) {
+        case 'info':
+        case 'green':
+            $color = "\033[32m";
+            break;
+        case 'warning':
+        case 'warn':
+        case 'yellow':
+        case 'orange':
+            $color = "\033[33m";
+            break;
+        case 'fatal':
+        case 'error':
+        case 'err':
+        case 'red':
+            $color = "\033[31m";
+            break;
+        case 'blue':
+            $color = "\033[34m";
+            break;
+        }
+        if ($color) {
+            $opening_tag = $color;
+            $closing_tag = $nocolor;
+        }
+        Clementine::$register['clementine_db']['tag'][] = $opening_tag;
+        Clementine::$register['clementine_db']['untag'][] = $closing_tag;
     }
 
     /**
@@ -156,6 +193,7 @@ class dbDbModel extends dbDbModel_Parent
     public function untag()
     {
         array_pop(Clementine::$register['clementine_db']['tag']);
+        array_pop(Clementine::$register['clementine_db']['untag']);
     }
 
     /**
