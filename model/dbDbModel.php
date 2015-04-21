@@ -247,6 +247,19 @@ class dbDbModel extends dbDbModel_Parent
         return mysqli_fetch_assoc($stmt);
     }
 
+
+    /**
+     * fetch_assoc : wrapper for mysqli_fetch_all
+     *
+     * @param mixed $stmt
+     * @access public
+     * @return void
+     */
+    public function fetch_all($stmt)
+    {
+        return mysqli_fetch_all($stmt)
+    }
+
     /**
      * affected_rows : wrapper for mysqli_affected_rows
      *
