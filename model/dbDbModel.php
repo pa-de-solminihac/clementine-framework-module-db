@@ -255,9 +255,9 @@ class dbDbModel extends dbDbModel_Parent
      * @access public
      * @return void
      */
-    public function fetch_all($stmt)
+    public function fetch_all($stmt, $resulttype = MYSQLI_NUM)
     {
-        return mysqli_fetch_all($stmt);
+        return mysqli_fetch_all($stmt, $resulttype);
     }
 
     /**
