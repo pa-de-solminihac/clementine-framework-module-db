@@ -249,7 +249,7 @@ class dbDbModel extends dbDbModel_Parent
 
 
     /**
-     * fetch_assoc : wrapper for mysqli_fetch_all
+     * fetch_all : wrapper for mysqli_fetch_all
      *
      * @param mixed $stmt
      * @access public
