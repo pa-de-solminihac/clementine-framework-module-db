@@ -257,7 +257,7 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function fetch_all($stmt)
     {
-        return mysqli_fetch_all($stmt)
+        return mysqli_fetch_all($stmt);
     }
 
     /**
