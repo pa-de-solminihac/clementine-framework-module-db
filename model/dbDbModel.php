@@ -257,7 +257,12 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function fetch_all($stmt, $resulttype = MYSQLI_NUM)
     {
-        return mysqli_fetch_all($stmt, $resulttype);
+        if (function_exists('mysqli_fetch_all')) # Compatibility layer with PHP < 5.3
+                $res = parent::fetch_all($resulttype);
+        else
+            for ($res = array(); $tmp = $this->fetch_array($resulttype);) $res[] = $tmp;
+
+        return $res;
     }
 
     /**
