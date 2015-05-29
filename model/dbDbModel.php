@@ -91,13 +91,21 @@ class dbDbModel extends dbDbModel_Parent
         $this->connect();
         if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
             if ($nonfatal) {
-                $this->tag('<span style="background: #F80">nonfatal</span>');
+                if (Clementine::$config['module_db']['log_queries']) {
+                    $this->tag('<span style="background: #F80">nonfatal</span>' . "\033" . Clementine::$config['clementine_shell_colors']['green'], "\033" . Clementine::$config['clementine_shell_colors']['normal']);
+                } else { 
+                    $this->tag('<span style="background: #F80">nonfatal</span>');
+                }
             }
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             $tags = implode('', Clementine::$register['clementine_db']['tag']);
             $untags = implode('', array_reverse(Clementine::$register['clementine_db']['untag']));
+            $rank = 0;
+            if (Clementine::$config['clementine_debug']['generate_tests']) {
+                $rank = 1;
+            }
             $nb = array_push(Clementine::$clementine_debug['sql'], array(
-                'file' => '<em>' . $backtrace[0]['file'] . ':' . $backtrace[0]['line'] . '</em>',
+                'file' => '<em>' . $backtrace[$rank]['file'] . ':' . $backtrace[$rank]['line'] . '</em>',
                 'query' => $tags . Clementine::dump(trim($sql) , true) . $untags
             ));
             $deb = microtime(true);
@@ -130,6 +138,11 @@ class dbDbModel extends dbDbModel_Parent
         } else {
             // log query to error_log, with it's tags if any
             if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
+                if ($nonfatal) {
+                    $this->tag("\033" . Clementine::$config['clementine_shell_colors']['green'], "\033" . Clementine::$config['clementine_shell_colors']['normal']);
+                }
+                $tags = implode('', Clementine::$register['clementine_db']['tag']);
+                $untags = implode('', array_reverse(Clementine::$register['clementine_db']['untag']));
                 error_log($tags . $sql . $untags);
             }
             $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
