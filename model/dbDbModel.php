@@ -257,6 +257,10 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function fetch_assoc($stmt)
     {
+        if ($stmt === false) {
+            $this->getHelper('debug')->trigger_error('fetch_assoc() expects parameter 1 to be db_result, boolean given', E_USER_WARNING, 1);
+            return false;
+        }
         return mysqli_fetch_assoc($stmt);
     }
 
