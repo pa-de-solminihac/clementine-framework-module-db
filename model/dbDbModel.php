@@ -125,12 +125,10 @@ class dbDbModel extends dbDbModel_Parent
                 // erreur fatale en affichant le detail de la requete
                 $errmore = 'Query : ';
                 $errmore.= PHP_EOL . Clementine::dump(preg_replace('/^[\r\n]*|[ 	\r\n]*$/', '', $sql), true);
-                if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
-                    Clementine::$register['clementine_debug_helper']->trigger_error(array(
-                        $err_msg,
-                        $errmore => 'html'
-                    ) , E_USER_ERROR, 1);
-                }
+                Clementine::$register['clementine_debug_helper']->trigger_error(array(
+                    $err_msg,
+                    $errmore => 'html'
+                ) , E_USER_ERROR, 1);
             }
             if ($nonfatal) {
                 $this->untag();
@@ -147,7 +145,17 @@ class dbDbModel extends dbDbModel_Parent
             }
             $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
             if ($res === false && $nonfatal == false) {
-                die();
+                $err_msg = $this->error();
+                if (substr($err_msg, -(strlen('at line 1'))) == 'at line 1') {
+                    $err_msg = substr($this->error(), 0, -(strlen(' at line 1')));
+                }
+                // erreur fatale en affichant le detail de la requete
+                $errmore = 'Query : ';
+                $errmore.= PHP_EOL . Clementine::dump(preg_replace('/^[\r\n]*|[ 	\r\n]*$/', '', $sql), true);
+                Clementine::$register['clementine_debug_helper']->trigger_error(array(
+                    $err_msg,
+                    $errmore => 'html'
+                ) , E_USER_ERROR, 1);
             }
         }
         return $res;
