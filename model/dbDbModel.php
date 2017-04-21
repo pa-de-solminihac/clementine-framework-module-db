@@ -10,16 +10,19 @@
  */
 class dbDbModel extends dbDbModel_Parent
 {
-
+    protected $module;
+    protected $class;
     protected $apc_enabled;
 
     public function __construct()
     {
         // checks if APC is available
         $this->apc_enabled = false;
-        if (Clementine::$config['module_db']['use_apc'] && ini_get('apc.enabled')) {
+        $this->module   = 'module_'     . strtolower(substr(get_class($this), 0, -strlen("Model")));
+        $this->class    = 'clementine_' . strtolower(substr(get_class($this), 0, -strlen("Model")));
+
+        if (Clementine::$config[$this->module]['use_apc'] && ini_get('apc.enabled'))
             $this->apc_enabled = true;
-        }
     }
 
     /**
@@ -31,36 +34,36 @@ class dbDbModel extends dbDbModel_Parent
     public function connect()
     {
         // connexion si necessaire
-        if (!(isset(Clementine::$register['clementine_db']) && isset(Clementine::$register['clementine_db']['connection']) && Clementine::$register['clementine_db']['connection'])) {
+        if (!(isset(Clementine::$register[$this->class]) && isset(Clementine::$register[$this->class]['connection']) && Clementine::$register[$this->class]['connection'])) {
             // mise en cache des champs recuperes par list_fields()
-            if (!isset(Clementine::$register['clementine_db']['table_fields'])) {
-                Clementine::$register['clementine_db']['table_fields'] = array();
+            if (!isset(Clementine::$register[$this->class]['table_fields'])) {
+                Clementine::$register[$this->class]['table_fields'] = array();
             }
             // mise en cache des champs recuperes par foreign_keys()
-            if (!isset(Clementine::$register['clementine_db']['foreign_keys'])) {
-                Clementine::$register['clementine_db']['foreign_keys'] = array();
+            if (!isset(Clementine::$register[$this->class]['foreign_keys'])) {
+                Clementine::$register[$this->class]['foreign_keys'] = array();
             }
             // pour le tagging de requetes
-            if (!(isset(Clementine::$register['clementine_db']['tag']) && is_array(Clementine::$register['clementine_db']['tag']))) {
-                Clementine::$register['clementine_db']['tag'] = array();
+            if (!(isset(Clementine::$register[$this->class]['tag']) && is_array(Clementine::$register[$this->class]['tag']))) {
+                Clementine::$register[$this->class]['tag'] = array();
             }
-            if (!(isset(Clementine::$register['clementine_db']['untag']) && is_array(Clementine::$register['clementine_db']['untag']))) {
-                Clementine::$register['clementine_db']['untag'] = array();
+            if (!(isset(Clementine::$register[$this->class]['untag']) && is_array(Clementine::$register[$this->class]['untag']))) {
+                Clementine::$register[$this->class]['untag'] = array();
             }
             // connexion et selection de la BD
-            $dbconf = Clementine::$config['clementine_db'];
-            Clementine::$register['clementine_db']['connection'] = mysqli_init();
+            $dbconf = Clementine::$config[$this->class];
+            Clementine::$register[$this->class]['connection'] = mysqli_init();
             $db_port = null;
             if (!empty($dbconf['port'])) {
                 $db_port = $dbconf['port'];
             }
-            $is_connected = @mysqli_real_connect(Clementine::$register['clementine_db']['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass'], $dbconf['name'], $db_port);
+            $is_connected = @mysqli_real_connect(Clementine::$register[$this->class]['connection'], $dbconf['host'], $dbconf['user'], $dbconf['pass'], $dbconf['name'], $db_port);
             if (!$is_connected) {
                 if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
                     $errmsg = 'La connexion à la base de données à échoué.';
                     $errmore = '';
                     if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
-                        $errmore = Clementine::$register['clementine_db']['connection']->connect_error;
+                        $errmore = Clementine::$register[$this->class]['connection']->connect_error;
                     }
                     Clementine::$register['clementine_debug_helper']->trigger_error(array(
                         $errmsg,
@@ -91,15 +94,15 @@ class dbDbModel extends dbDbModel_Parent
         $this->connect();
         if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
             if ($nonfatal) {
-                if (Clementine::$config['module_db']['log_queries']) {
+                if (Clementine::$config[$this->module]['log_queries']) {
                     $this->tag('<span style="background: #F80">nonfatal</span>' . "\033" . Clementine::$config['clementine_shell_colors']['green'], "\033" . Clementine::$config['clementine_shell_colors']['normal']);
                 } else { 
                     $this->tag('<span style="background: #F80">nonfatal</span>');
                 }
             }
             $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
-            $tags = implode('', Clementine::$register['clementine_db']['tag']);
-            $untags = implode('', array_reverse(Clementine::$register['clementine_db']['untag']));
+            $tags = implode('', Clementine::$register[$this->class]['tag']);
+            $untags = implode('', array_reverse(Clementine::$register[$this->class]['untag']));
             $rank = 0;
             if (Clementine::$config['clementine_debug']['generate_tests']) {
                 $rank = 1;
@@ -110,10 +113,10 @@ class dbDbModel extends dbDbModel_Parent
             ));
             $deb = microtime(true);
             // log query to error_log, with it's tags if any
-            if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
+            if (__DEBUGABLE__ && Clementine::$config[$this->module]['log_queries']) {
                 error_log($tags . $sql . $untags);
             }
-            $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
+            $res = mysqli_query(Clementine::$register[$this->class]['connection'], $sql);
             $fin = microtime(true);
             $duree = $fin - $deb;
             Clementine::$clementine_debug['sql'][$nb - 1]['duree'] = $duree;
@@ -135,15 +138,15 @@ class dbDbModel extends dbDbModel_Parent
             }
         } else {
             // log query to error_log, with it's tags if any
-            if (__DEBUGABLE__ && Clementine::$config['module_db']['log_queries']) {
+            if (__DEBUGABLE__ && Clementine::$config[$this->module]['log_queries']) {
                 if ($nonfatal) {
                     $this->tag("\033" . Clementine::$config['clementine_shell_colors']['green'], "\033" . Clementine::$config['clementine_shell_colors']['normal']);
                 }
-                $tags = implode('', Clementine::$register['clementine_db']['tag']);
-                $untags = implode('', array_reverse(Clementine::$register['clementine_db']['untag']));
+                $tags = implode('', Clementine::$register[$this->class]['tag']);
+                $untags = implode('', array_reverse(Clementine::$register[$this->class]['untag']));
                 error_log($tags . $sql . $untags);
             }
-            $res = mysqli_query(Clementine::$register['clementine_db']['connection'], $sql);
+            $res = mysqli_query(Clementine::$register[$this->class]['connection'], $sql);
             if ($res === false && $nonfatal == false) {
                 $err_msg = $this->error();
                 if (substr($err_msg, -(strlen('at line 1'))) == 'at line 1') {
@@ -201,8 +204,8 @@ class dbDbModel extends dbDbModel_Parent
             $opening_tag = $color;
             $closing_tag = $nocolor;
         }
-        Clementine::$register['clementine_db']['tag'][] = $opening_tag;
-        Clementine::$register['clementine_db']['untag'][] = $closing_tag;
+        Clementine::$register[$this->class]['tag'][] = $opening_tag;
+        Clementine::$register[$this->class]['untag'][] = $closing_tag;
     }
 
     /**
@@ -213,8 +216,8 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function untag()
     {
-        array_pop(Clementine::$register['clementine_db']['tag']);
-        array_pop(Clementine::$register['clementine_db']['untag']);
+        array_pop(Clementine::$register[$this->class]['tag']);
+        array_pop(Clementine::$register[$this->class]['untag']);
     }
 
     /**
@@ -228,7 +231,7 @@ class dbDbModel extends dbDbModel_Parent
     {
         // connexion si necessaire
         $this->connect();
-        return mysqli_real_escape_string(Clementine::$register['clementine_db']['connection'], $str);
+        return mysqli_real_escape_string(Clementine::$register[$this->class]['connection'], $str);
     }
 
     /**
@@ -240,7 +243,7 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function error($link = null)
     {
-        return mysqli_error(Clementine::$register['clementine_db']['connection']);
+        return mysqli_error(Clementine::$register[$this->class]['connection']);
     }
 
     /**
@@ -302,9 +305,9 @@ class dbDbModel extends dbDbModel_Parent
     public function affected_rows($stmt = null)
     {
         if ($stmt) {
-            return mysqli_affected_rows(Clementine::$register['clementine_db']['connection'], $stmt);
+            return mysqli_affected_rows(Clementine::$register[$this->class]['connection'], $stmt);
         } else {
-            return mysqli_affected_rows(Clementine::$register['clementine_db']['connection']);
+            return mysqli_affected_rows(Clementine::$register[$this->class]['connection']);
         }
     }
 
@@ -328,7 +331,7 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function insert_id()
     {
-        return mysqli_insert_id(Clementine::$register['clementine_db']['connection']);
+        return mysqli_insert_id(Clementine::$register[$this->class]['connection']);
     }
 
     /**
@@ -358,29 +361,34 @@ class dbDbModel extends dbDbModel_Parent
      */
     public function list_fields($table)
     {
-        if (!isset(Clementine::$register['clementine_db']['table_fields'][$table])) {
-            $database = Clementine::$config['clementine_db']['name'];
+        if (!isset(Clementine::$register[$this->class]['table_fields'][$table])) {
+            $database = Clementine::$config[$this->class]['name'];
             $fromcache = null;
             if ($this->apc_enabled) {
-                $result = apc_fetch('clementine_db-list_fields.' . $database . '-' . $table, $fromcache);
+                $result = apc_fetch($this->class . '-list_fields.' . $database . '-' . $table, $fromcache);
             }
             if (!$fromcache) {
-                $sql = "SHOW FULL COLUMNS FROM `" . $this->escape_string($table) . "` ";
+
+                if (empty($table))
+                    return false;
+
+                $sql = 'SHOW FULL COLUMNS FROM `' . $this->escape_string($table) . '` ';
                 $result = array();
                 $res = $this->query($sql);
-                if ($res === false) {
+
+                if ($res === false)
                     return false;
-                } else {
-                    for (; $res && $row = $this->fetch_assoc($res); $result[] = $row) {
-                    }
-                }
-                if ($this->apc_enabled) {
-                    apc_store('clementine_db-list_fields.' . $database . '-' . $table, $result);
-                }
+
+                else
+                    for (; $res && $row = $this->fetch_assoc($res); $result[] = $row){}
+
+                if ($this->apc_enabled)
+                    apc_store($this->class . '-list_fields.' . $database . '-' . $table, $result);
             }
-            Clementine::$register['clementine_db']['table_fields'][$table] = $result;
+
+            Clementine::$register[$this->class]['table_fields'][$table] = $result;
         }
-        return Clementine::$register['clementine_db']['table_fields'][$table];
+        return Clementine::$register[$this->class]['table_fields'][$table];
     }
 
     /**
@@ -394,16 +402,16 @@ class dbDbModel extends dbDbModel_Parent
     public function foreign_keys($table = null, $database = null)
     {
         if (!$database) {
-            if (isset(Clementine::$config['clementine_db']) && isset(Clementine::$config['clementine_db']['name'])) {
-                $database = Clementine::$config['clementine_db']['name'];
+            if (isset(Clementine::$config[$this->class]) && isset(Clementine::$config[$this->class]['name'])) {
+                $database = Clementine::$config[$this->class]['name'];
             } else {
                 return false;
             }
         }
-        if (!isset(Clementine::$register['clementine_db']['foreign_keys'][$table])) {
+        if (!isset(Clementine::$register[$this->class]['foreign_keys'][$table])) {
             $fromcache = null;
             if ($this->apc_enabled) {
-                $result = apc_fetch('clementine_db-foreign_keys.' . $database . '-' . $table, $fromcache);
+                $result = apc_fetch($this->class . '-foreign_keys.' . $database . '-' . $table, $fromcache);
             }
             if (!$fromcache) {
                 // version réécrite : plus rapide que d'aller chercher dans la base information_schema (lent selon versions de mysql)
@@ -426,12 +434,12 @@ class dbDbModel extends dbDbModel_Parent
                     $result[] = $fk;
                 }
                 if ($this->apc_enabled) {
-                    apc_store('clementine_db-foreign_keys.' . $database . '-' . $table, $result);
+                    apc_store($this->class . '-foreign_keys.' . $database . '-' . $table, $result);
                 }
             }
-            Clementine::$register['clementine_db']['foreign_keys'][$table] = $result;
+            Clementine::$register[$this->class]['foreign_keys'][$table] = $result;
         }
-        return Clementine::$register['clementine_db']['foreign_keys'][$table];
+        return Clementine::$register[$this->class]['foreign_keys'][$table];
     }
 
     /**
