@@ -93,6 +93,9 @@ class dbDbModel extends dbDbModel_Parent
     {
         // connexion si necessaire
         $this->connect();
+        if (Clementine::$config[$this->module]['sql_no_cache']) {
+            $sql = preg_replace('/\bselect\b/i', 'SELECT SQL_NO_CACHE', $sql, 1);
+        }
         if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
             if ($nonfatal) {
                 if (Clementine::$config[$this->module]['log_queries']) {
