@@ -97,6 +97,7 @@ class dbDbModel extends dbDbModel_Parent
             $sql = preg_replace('/\bselect\b/i', 'SELECT SQL_NO_CACHE', $sql, 1);
         }
         if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
+            $sql = trim($sql);
             if ($nonfatal) {
                 if (Clementine::$config[$this->module]['log_queries']) {
                     $this->tag('<span style="background: #F80">nonfatal</span>' . "\033" . Clementine::$config['clementine_shell_colors']['green'], "\033" . Clementine::$config['clementine_shell_colors']['normal']);
@@ -111,19 +112,50 @@ class dbDbModel extends dbDbModel_Parent
             if (Clementine::$config['clementine_debug']['generate_tests']) {
                 $rank = 1;
             }
-            $nb = array_push(Clementine::$clementine_debug['sql'], array(
-                'file' => '<em>' . $backtrace[$rank]['file'] . ':' . $backtrace[$rank]['line'] . '</em>',
-                'query' => $tags . Clementine::dump(trim($sql) , true) . $untags
-            ));
             $deb = microtime(true);
-            // log query to error_log, with it's tags if any
-            if (__DEBUGABLE__ && Clementine::$config[$this->module]['log_queries']) {
-                error_log($tags . $sql . $untags);
-            }
             $res = mysqli_query(Clementine::$register[$this->clementine_db_config]['connection'], $sql);
             $fin = microtime(true);
             $duree = $fin - $deb;
-            Clementine::$clementine_debug['sql'][$nb - 1]['duree'] = $duree;
+            // log query to error_log, with it's tags if any
+            if (__DEBUGABLE__ && Clementine::$config[$this->module]['log_queries']) {
+                $log_query_msg = 'timestamp=' . Clementine::$register['request']->SERVER['REQUEST_TIME'] . ':duree=' . round($duree * 1000, 2) . 'ms: ' . $tags . $sql . $untags;
+                Clementine::log($log_query_msg);
+            }
+            $backtrace = array_slice($backtrace, 0, -3, true);
+            $backtrace_query = '';
+            foreach ($backtrace as $trace) {
+                $trace_msg = '';
+                if (!empty($trace['file'])) {
+                    $trace_msg .= str_replace(__FILES_ROOT__ . '/', '', $trace['file']) . ':' . $trace['line'];
+                }
+                if (!empty($trace['class']) || !empty($trace['type']) || !empty($trace['function'])) {
+                    $trace_msg .= ' <small style="color: gray; text-align: right; ">';
+                    if (!empty($trace['class'])) {
+                        $trace_msg .= $trace['class'];
+                    }
+                    if (!empty($trace['type'])) {
+                        $trace_msg .= $trace['type'];
+                    }
+                    if (!empty($trace['function'])) {
+                        $trace_msg .= $trace['function'];
+                    }
+                    $trace_msg .= '</small>';
+                }
+                $trace_msg .= '<br />';
+                if (!empty($trace['class']) && !empty($trace['function']) && $trace['class'] == 'Clementine' && $trace['function'] == '_require') {
+                    $trace_msg = '';
+                }
+                if (empty($trace['class']) && !empty($trace['function']) && $trace['function'] == 'require') {
+                    $trace_msg = '';
+                }
+                $backtrace_query.= $trace_msg;
+            }
+            Clementine::$clementine_debug['sql'][$sql][] = array(
+                //'file' => '<em>' . $backtrace[$rank]['file'] . ':' . $backtrace[$rank]['line'] . '</em>',
+                'file' => $backtrace_query,
+                'duree' => $duree,
+                'query' => $tags . Clementine::dump($sql , true) . $untags,
+            );
             if ($res === false && $nonfatal == false) {
                 $err_msg = $this->error();
                 if (substr($err_msg, -(strlen('at line 1'))) == 'at line 1') {
@@ -148,7 +180,7 @@ class dbDbModel extends dbDbModel_Parent
                 }
                 $tags = implode('', Clementine::$register[$this->clementine_db_config]['tag']);
                 $untags = implode('', array_reverse(Clementine::$register[$this->clementine_db_config]['untag']));
-                error_log($tags . $sql . $untags);
+                Clementine::log($tags . $sql . $untags);
             }
             $res = mysqli_query(Clementine::$register[$this->clementine_db_config]['connection'], $sql);
             if ($res === false && $nonfatal == false) {
@@ -512,4 +544,3 @@ class dbDbModel extends dbDbModel_Parent
     }
 
 }
-?>
