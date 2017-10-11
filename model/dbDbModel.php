@@ -76,9 +76,37 @@ class dbDbModel extends dbDbModel_Parent
                     Clementine::$clementine_debug['sql'] = array();
                 }
             }
-            $this->query('SET NAMES ' . __SQL_ENCODING__);
-            $this->query('SET CHARACTER SET ' . __SQL_ENCODING__);
+            // properly set charset, cf. http://www.php.net/manual/en/mysqlinfo.concepts.charset.php
+            $is_charset_set = mysqli_set_charset(Clementine::$register[$this->clementine_db_config]['connection'], __SQL_ENCODING__);
+            if (!$is_charset_set) {
+                if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['display_errors']) {
+                    $errmsg = 'La communication avec la base de données est mal encodée.';
+                    $errmore = '';
+                    if (__DEBUGABLE__ && Clementine::$config['clementine_debug']['sql']) {
+                        $errmore = $this->error();
+                    }
+                    Clementine::$register['clementine_debug_helper']->trigger_error(array(
+                        $errmsg,
+                        $errmore
+                    ), E_USER_ERROR, 0);
+                }
+            }
         }
+    }
+
+    /**
+     * close : wrapper pour mysqli_close
+     *
+     * @access public
+     * @return void
+     */
+    public function close()
+    {
+        if ($ret = mysqli_close(Clementine::$register[$this->clementine_db_config]['connection'])) {
+            unset(Clementine::$register[$this->clementine_db_config]['connection']);
+            return $ret;
+        }
+        return false;
     }
 
     /**
